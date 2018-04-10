@@ -54,16 +54,16 @@ class WebsocketClientModule(Thread):
         on_message = self.onMessage,
         on_error = self.onError,
         on_close = self.onClose)
-        ws.on_open = self.on_open
+        ws.on_open = self.onOpen
         ws.run_forever()
 
-    def onError(self, message):
+    def onError(self, ws, message):
         self.logger.error("Error from websocket client: %s"%message)
 
-     def onClose(self, message):
-        self.logger.warn("Websocket closed: %s"%message)
+    def onClose(self, ws):
+        self.logger.warn("Closed")
 
-     def onMessage(self, message):
+    def onMessage(self, ws, message):
         self.logger.info("Message from websocket server: %s"%message)
 
     def onOpen(self, ws):

@@ -1,4 +1,8 @@
-
+import cv2
+from threading import Thread
+import time
+from collectionPointEvent import CollectionPointEvent
+from threadsafeLogger import ThreadsafeLogger
 
 class TVCollectionPoint(Thread):
 
@@ -31,6 +35,12 @@ class TVCollectionPoint(Thread):
         self._numLEDS = 60
         self._collectionPointId = "tvcam1"
         self._collectionPointType = "ambiLED"
+        self._showVideoStream = True
+        self._delimiter = ';'
+        self._x = 300
+        self._y = 200
+        self._w = 500
+        self._h = 300
 
         # Logger
         self.logger = ThreadsafeLogger(loggingQueue, __name__)
@@ -38,9 +48,7 @@ class TVCollectionPoint(Thread):
     def run(self):
         """ Main thread method, run when the thread's start() function is called.
         Controls flow of detected faces and the MultiTracker. 
-        Determines when to send 'reset' events to clients and when to send 'found' events. 
-        This function contains various comments along the way to help understand the flow.
-        You can use this flow, extend it, or build your own.
+        Sends color data in string format, like "#fffff;#f1f1f1;..."
         """
 
         # Monitor inbound queue on own thread
@@ -69,6 +77,10 @@ class TVCollectionPoint(Thread):
                 self.logger.error('Error while reading frame')
                 break
                 
+            if self._showVideoStream:
+                cv2.rectangle(frame, (self._x, self._y), (self._x+self._w, self._y+self._h), (255,0,0), 1)
+                cv2.imshow("output", frame)
+                cv2.waitKey(1)
 
 
     def initializeCamera(self):
@@ -131,6 +143,7 @@ class TVCollectionPoint(Thread):
     def shutdown(self):
         self.alive = False
         self.logger.info("Shutting down")
+        self.putCPMessage(None, 'off')
         cv2.destroyAllWindows()
         # self.threadProcessQueue.join()
         time.sleep(1)
