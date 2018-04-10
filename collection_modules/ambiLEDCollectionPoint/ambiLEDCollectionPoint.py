@@ -24,6 +24,14 @@ class TVCollectionPoint(Thread):
         # Variables
         self.video = None
         self.alive = True
+        self.ix = -1
+        self.iy = -1
+        self.fx = -1
+        self.fy = -1
+        self.clicking = False
+        self.boundSet = False
+
+        self.x1,self.x2,self.y1,self.y2 = 0,0,0,0
 
         # Configs
         #self.moduleConfig = camConfigLoader.load(self.loggingQueue) #Get the config for this module
@@ -37,10 +45,6 @@ class TVCollectionPoint(Thread):
         self._collectionPointType = "ambiLED"
         self._showVideoStream = True
         self._delimiter = ';'
-        self._x = 300
-        self._y = 200
-        self._w = 500
-        self._h = 300
 
         # Logger
         self.logger = ThreadsafeLogger(loggingQueue, __name__)
@@ -70,6 +74,25 @@ class TVCollectionPoint(Thread):
         if not ok:
             self.logger.error('Cannot read video file')
             self.shutdown()
+        else:
+            framecopy = frame.copy()
+            cont = True
+            while cont or not self.boundSet:
+                cv2.imshow('Set ROI', framecopy)
+                cv2.setMouseCallback('Set ROI', self.getROI, frame)
+                k = cv2.waitKey(0)
+                if k == 27 and self.boundSet:
+                    # on esc, user wants to exit, only allow them to exit if bounds set
+                    print('k: ', k)
+                    cont = False
+                # elif k != 27:
+                    # any other key clears rectangles
+                    # framecopy = frame.copy()
+                    #ok, frame = self.video.read()
+                    # cv2.imshow('Set ROI', framecopy)
+                    # cv2.setMouseCallback('Set ROI', self.getROI, framecopy)
+        cv2.destroyWindow('Set ROI')
+
 
         while self.alive:
             ok, frame = self.video.read()
@@ -78,7 +101,7 @@ class TVCollectionPoint(Thread):
                 break
                 
             if self._showVideoStream:
-                cv2.rectangle(frame, (self._x, self._y), (self._x+self._w, self._y+self._h), (255,0,0), 1)
+                cv2.rectangle(frame, (self.ix, self.iy), (self.fx, self.fy), (255,0,0), 1)
                 cv2.imshow("output", frame)
                 cv2.waitKey(1)
 
@@ -92,6 +115,24 @@ class TVCollectionPoint(Thread):
         #set the resolution from config
         self.video.set(cv2.CAP_PROP_FRAME_WIDTH, self._captureWidth)
         self.video.set(cv2.CAP_PROP_FRAME_HEIGHT, self._captureHeight)
+
+    def getROI(self, event, x, y, flags, frame):
+        framecopy = frame.copy()
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.clicking = True
+            self.ix,self.iy = x,y
+
+        elif event == cv2.EVENT_MOUSEMOVE:
+            if self.clicking:
+                cv2.rectangle(framecopy, (self.ix,self.iy),(x,y),(0,255,0),-1)
+                cv2.imshow('Set ROI', framecopy)
+
+        elif event == cv2.EVENT_LBUTTONUP:
+            self.clicking = False
+            cv2.rectangle(framecopy, (self.ix,self.iy),(x,y),(0,255,0),-1)
+            cv2.imshow('Set ROI', framecopy)
+            self.fx,self.fy = x,y
+            self.boundSet = True
 
     def processQueue(self):
         self.logger.info("Starting to watch collection point inbound message queue")
@@ -143,13 +184,11 @@ class TVCollectionPoint(Thread):
     def shutdown(self):
         self.alive = False
         self.logger.info("Shutting down")
-        self.putCPMessage(None, 'off')
+        # self.putCPMessage(None, 'off')
         cv2.destroyAllWindows()
-        # self.threadProcessQueue.join()
         time.sleep(1)
         self.exit = True
 
-    #Custom methods for demo
     def get_opencv_version(self):
         import cv2 as lib
         return lib.__version__

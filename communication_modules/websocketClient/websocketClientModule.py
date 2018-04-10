@@ -61,7 +61,12 @@ class WebsocketClientModule(Thread):
         self.logger.error("Error from websocket client: %s"%message)
 
     def onClose(self, ws):
-        self.logger.warn("Closed")
+        if self.alive:
+            self.logger.warn("Closed")
+            self.alive = False
+            # TODO: reconnect timer
+        else:
+            self.logger.info("Closed")
 
     def onMessage(self, ws, message):
         self.logger.info("Message from websocket server: %s"%message)
