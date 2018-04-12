@@ -99,21 +99,17 @@ class TVCollectionPoint(Thread):
                     # cv2.setMouseCallback('Set ROI', self.getROI, framecopy)
         cv2.destroyWindow('Set ROI')
 
-        # self.ix = 300
-        # self.fx = 600
-        # self.iy = 300
-        # self.fy = 600
-
         self.initKMeans()
 
-        # Set up mode
-        # if self._colorMode == 'dominant':
+        # Set up for all modes
+        top_length_pixels = self.fx-self.ix
+        side_length_pixels = self.fy-self.iy
+        perimeter_length_pixels = top_length_pixels*2 + side_length_pixels*2
 
+        # mode specific setup
+        if self._colorMode == 'dominant':
+            pass
         if self._colorMode == 'edgeDominant' or self._colorMode == 'edgeMean':
-            top_length_pixels = self.fx-self.ix
-            side_length_pixels = self.fy-self.iy
-            perimeter_length_pixels = top_length_pixels*2 + side_length_pixels*2
-            print('perimeter_length_pixels: %s'%perimeter_length_pixels)
             perimeter_depth = 0
             if self._perimeterDepth < side_length_pixels/2 and self._perimeterDepth < top_length_pixels/2:
                 perimeter_depth = self._perimeterDepth
@@ -127,9 +123,6 @@ class TVCollectionPoint(Thread):
                 break
             frame = ogframe.copy()
 
-            #resize frame for color sampling
-            # frame = cv2.resize(fframe, (0,0), fx=0.5, fy=0.5)
-
             # Dominant color
             if self._colorMode == 'dominant':
                 dominant_color = self.getDominantColor(cv2.resize(frame[:,:,:], (0,0), fx=0.4, fy=0.4), self.ix, self.fx, self.iy, self.fy)
@@ -137,106 +130,11 @@ class TVCollectionPoint(Thread):
                 print(dominant_color)
 
             elif self._colorMode == 'edgeMean':
-                # assuming LEDs are evenly distributed, find number for each edge of ROI
-                top_num_leds = self._numLEDs*(top_length_pixels/perimeter_length_pixels)
-                side_num_leds = self._numLEDs*(side_length_pixels/perimeter_length_pixels)
-                top_segment_length = top_length_pixels/self._topSegments
-                side_segment_length = side_length_pixels/self._sideSegments
-
-                for i in range(0, self._topSegments):
-                    ix = int(self.ix+i*top_segment_length)
-                    fx = int(self.ix+(i+1)*top_segment_length)
-                    iy = int(self.iy)
-                    fy = int(self.iy+perimeter_depth)
-                    c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
-                    print('top segment %s, c: '%i, c)
-                    if self._showVideoStream:
-                        cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
-                        cv2.rectangle(frame, (ix, iy-(10+perimeter_depth)), (fx, fy-perimeter_depth), (int(c[0]), int(c[1]), int(c[2])), 10)
-
-                for i in range(0, self._sideSegments):
-
-                    ix = int(self.fx-perimeter_depth)
-                    fx = int(self.fx)
-                    iy = int(self.iy+i*side_segment_length)
-                    fy = int(self.iy+(i+1)*side_segment_length)
-                    c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
-                    print('right segment %s, c: '%i, c)
-                    if self._showVideoStream:
-                        cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
-                        cv2.rectangle(frame, (ix+perimeter_depth, iy), (fx+(10+perimeter_depth), fy), (int(c[0]), int(c[1]), int(c[2])), 10)
-
-                for i in range(0, self._topSegments):
-
-                    ix = int(self.fx-(i+1)*top_segment_length) 
-                    fx = int(self.fx-i*top_segment_length)
-                    iy = int(self.fy-perimeter_depth)
-                    fy = int(self.fy)
-                    c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
-                    print('bottom segment %s, c: '%i, c)
-                    if self._showVideoStream:
-                        cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
-                        cv2.rectangle(frame, (ix, iy+perimeter_depth), (fx, fy+(10+perimeter_depth)), (int(c[0]), int(c[1]), int(c[2])), 10)
-
-                for i in range(0, self._sideSegments):
-
-                    ix = int(self.ix)
-                    fx = int(self.ix+perimeter_depth)
-                    iy = int(self.fy-(i+1)*side_segment_length)
-                    fy = int(self.fy-i*side_segment_length)
-                    c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
-                    print('left segment %s, c: '%i, c)
-                    if self._showVideoStream:
-                        cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
-                        cv2.rectangle(frame, (ix-(10+perimeter_depth), iy), (fx-perimeter_depth, fy), (int(c[0]), int(c[1]), int(c[2])), 10)
+                data = self.getEdgeMeanColors(frame, top_length_pixels, side_length_pixels, perimeter_length_pixels, perimeter_depth)
 
             elif self._colorMode == 'edgeDominant':
-                # assuming LEDs are evenly distributed, find number for each edge of ROI
-                top_num_leds = self._numLEDs*(top_length_pixels/perimeter_length_pixels)
-                side_num_leds = self._numLEDs*(side_length_pixels/perimeter_length_pixels)
-                top_segment_length = top_length_pixels/self._topSegments
-                side_segment_length = side_length_pixels/self._sideSegments
-
-                for i in range(0, self._topSegments):
-                    ix = int(self.ix+i*top_segment_length)
-                    fx = int(self.ix+(i+1)*top_segment_length)
-                    iy = int(self.iy)
-                    fy = int(self.iy+perimeter_depth)
-                    c = self.getDominantSegmentColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
-                    if self._showVideoStream:
-                        cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
-                        cv2.rectangle(frame, (ix, iy-(10+perimeter_depth)), (fx, fy-perimeter_depth), (int(c[0]), int(c[1]), int(c[2])), 10)
-
-                for i in range(0, self._sideSegments):
-                    ix = int(self.fx-perimeter_depth)
-                    fx = int(self.fx)
-                    iy = int(self.iy+i*side_segment_length)
-                    fy = int(self.iy+(i+1)*side_segment_length)
-                    ff = cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2)
-                    c = self.getDominantSegmentColor(ff)
-                    if self._showVideoStream:
-                        cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
-                        cv2.rectangle(frame, (ix+perimeter_depth, iy), (fx+(10+perimeter_depth), fy), (int(c[0]), int(c[1]), int(c[2])), 10)
-
-                for i in range(0, self._topSegments):
-                    ix = int(self.fx-(i+1)*top_segment_length) 
-                    fx = int(self.fx-i*top_segment_length)
-                    iy = int(self.fy-perimeter_depth)
-                    fy = int(self.fy)
-                    c = self.getDominantSegmentColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
-                    if self._showVideoStream:
-                        cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
-                        cv2.rectangle(frame, (ix, iy+perimeter_depth), (fx, fy+(10+perimeter_depth)), (int(c[0]), int(c[1]), int(c[2])), 10)
-
-                for i in range(0, self._sideSegments):
-                    ix = int(self.ix)
-                    fx = int(self.ix+perimeter_depth)
-                    iy = int(self.fy-(i+1)*side_segment_length)
-                    fy = int(self.fy-i*side_segment_length)
-                    c = self.getDominantSegmentColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
-                    if self._showVideoStream:
-                        cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
-                        cv2.rectangle(frame, (ix-(10+perimeter_depth), iy), (fx-perimeter_depth, fy), (int(c[0]), int(c[1]), int(c[2])), 10)
+                # this is the most promising
+                self.getEdgeDominantColors(frame, top_length_pixels, side_length_pixels, perimeter_length_pixels, perimeter_depth)
 
             if self._showVideoStream:
                 cv2.rectangle(frame, (self.ix, self.iy), (self.fx, self.fy), (255,0,0), 1)
@@ -268,6 +166,109 @@ class TVCollectionPoint(Thread):
         dominant_color = palette[np.argmax(itemfreq(labels)[:, -1])]
 
         return dominant_color
+
+    def getEdgeMeanColors(self, frame, top_length_pixels, side_length_pixels, perimeter_length_pixels, perimeter_depth):
+        # assuming LEDs are evenly distributed, find number for each edge of ROI
+        top_num_leds = self._numLEDs*(top_length_pixels/perimeter_length_pixels)
+        side_num_leds = self._numLEDs*(side_length_pixels/perimeter_length_pixels)
+        top_segment_length = top_length_pixels/self._topSegments
+        side_segment_length = side_length_pixels/self._sideSegments
+
+        for i in range(0, self._topSegments):
+            ix = int(self.ix+i*top_segment_length)
+            fx = int(self.ix+(i+1)*top_segment_length)
+            iy = int(self.iy)
+            fy = int(self.iy+perimeter_depth)
+            c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            print('top segment %s, c: '%i, c)
+            if self._showVideoStream:
+                cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
+                cv2.rectangle(frame, (ix, iy-(10+perimeter_depth)), (fx, fy-perimeter_depth), (int(c[0]), int(c[1]), int(c[2])), 10)
+
+        for i in range(0, self._sideSegments):
+            ix = int(self.fx-perimeter_depth)
+            fx = int(self.fx)
+            iy = int(self.iy+i*side_segment_length)
+            fy = int(self.iy+(i+1)*side_segment_length)
+            c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            print('right segment %s, c: '%i, c)
+            if self._showVideoStream:
+                cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
+                cv2.rectangle(frame, (ix+perimeter_depth, iy), (fx+(10+perimeter_depth), fy), (int(c[0]), int(c[1]), int(c[2])), 10)
+
+        for i in range(0, self._topSegments):
+            ix = int(self.fx-(i+1)*top_segment_length) 
+            fx = int(self.fx-i*top_segment_length)
+            iy = int(self.fy-perimeter_depth)
+            fy = int(self.fy)
+            c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            print('bottom segment %s, c: '%i, c)
+            if self._showVideoStream:
+                cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
+                cv2.rectangle(frame, (ix, iy+perimeter_depth), (fx, fy+(10+perimeter_depth)), (int(c[0]), int(c[1]), int(c[2])), 10)
+
+        for i in range(0, self._sideSegments):
+            ix = int(self.ix)
+            fx = int(self.ix+perimeter_depth)
+            iy = int(self.fy-(i+1)*side_segment_length)
+            fy = int(self.fy-i*side_segment_length)
+            c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            print('left segment %s, c: '%i, c)
+            if self._showVideoStream:
+                cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
+                cv2.rectangle(frame, (ix-(10+perimeter_depth), iy), (fx-perimeter_depth, fy), (int(c[0]), int(c[1]), int(c[2])), 10)
+
+        return 0
+
+    def getEdgeDominantColors(self, frame, top_length_pixels, side_length_pixels, perimeter_length_pixels, perimeter_depth):
+        # assuming LEDs are evenly distributed, find number for each edge of ROI
+        top_num_leds = self._numLEDs*(top_length_pixels/perimeter_length_pixels)
+        side_num_leds = self._numLEDs*(side_length_pixels/perimeter_length_pixels)
+        top_segment_length = top_length_pixels/self._topSegments
+        side_segment_length = side_length_pixels/self._sideSegments
+
+        for i in range(0, self._topSegments):
+            ix = int(self.ix+i*top_segment_length)
+            fx = int(self.ix+(i+1)*top_segment_length)
+            iy = int(self.iy)
+            fy = int(self.iy+perimeter_depth)
+            c = self.getDominantSegmentColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            if self._showVideoStream:
+                cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
+                cv2.rectangle(frame, (ix, iy-(10+perimeter_depth)), (fx, fy-perimeter_depth), (int(c[0]), int(c[1]), int(c[2])), 10)
+
+        for i in range(0, self._sideSegments):
+            ix = int(self.fx-perimeter_depth)
+            fx = int(self.fx)
+            iy = int(self.iy+i*side_segment_length)
+            fy = int(self.iy+(i+1)*side_segment_length)
+            ff = cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2)
+            c = self.getDominantSegmentColor(ff)
+            if self._showVideoStream:
+                cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
+                cv2.rectangle(frame, (ix+perimeter_depth, iy), (fx+(10+perimeter_depth), fy), (int(c[0]), int(c[1]), int(c[2])), 10)
+
+        for i in range(0, self._topSegments):
+            ix = int(self.fx-(i+1)*top_segment_length) 
+            fx = int(self.fx-i*top_segment_length)
+            iy = int(self.fy-perimeter_depth)
+            fy = int(self.fy)
+            c = self.getDominantSegmentColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            if self._showVideoStream:
+                cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
+                cv2.rectangle(frame, (ix, iy+perimeter_depth), (fx, fy+(10+perimeter_depth)), (int(c[0]), int(c[1]), int(c[2])), 10)
+
+        for i in range(0, self._sideSegments):
+            ix = int(self.ix)
+            fx = int(self.ix+perimeter_depth)
+            iy = int(self.fy-(i+1)*side_segment_length)
+            fy = int(self.fy-i*side_segment_length)
+            c = self.getDominantSegmentColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            if self._showVideoStream:
+                cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
+                cv2.rectangle(frame, (ix-(10+perimeter_depth), iy), (fx-perimeter_depth, fy), (int(c[0]), int(c[1]), int(c[2])), 10)
+
+        return 0
 
     def getDominantColor(self, img, ix, fx, iy, fy):
         ix = int(ix)
