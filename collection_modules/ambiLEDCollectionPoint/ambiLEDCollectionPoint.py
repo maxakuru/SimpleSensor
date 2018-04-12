@@ -179,7 +179,7 @@ class TVCollectionPoint(Thread):
             fx = int(self.ix+(i+1)*top_segment_length)
             iy = int(self.iy)
             fy = int(self.iy+perimeter_depth)
-            c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            c = self.getMeanColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
             print('top segment %s, c: '%i, c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
@@ -190,7 +190,7 @@ class TVCollectionPoint(Thread):
             fx = int(self.fx)
             iy = int(self.iy+i*side_segment_length)
             fy = int(self.iy+(i+1)*side_segment_length)
-            c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            c = self.getMeanColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
             print('right segment %s, c: '%i, c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
@@ -201,7 +201,7 @@ class TVCollectionPoint(Thread):
             fx = int(self.fx-i*top_segment_length)
             iy = int(self.fy-perimeter_depth)
             fy = int(self.fy)
-            c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            c = self.getMeanColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
             print('bottom segment %s, c: '%i, c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
@@ -212,7 +212,7 @@ class TVCollectionPoint(Thread):
             fx = int(self.ix+perimeter_depth)
             iy = int(self.fy-(i+1)*side_segment_length)
             fy = int(self.fy-i*side_segment_length)
-            c = self.getMeanColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            c = self.getMeanColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
             print('left segment %s, c: '%i, c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
@@ -232,7 +232,7 @@ class TVCollectionPoint(Thread):
             fx = int(self.ix+(i+1)*top_segment_length)
             iy = int(self.iy)
             fy = int(self.iy+perimeter_depth)
-            c = self.getDominantSegmentColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            c = self.getDominantSegmentColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
                 cv2.rectangle(frame, (ix, iy-(10+perimeter_depth)), (fx, fy-perimeter_depth), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -242,8 +242,7 @@ class TVCollectionPoint(Thread):
             fx = int(self.fx)
             iy = int(self.iy+i*side_segment_length)
             fy = int(self.iy+(i+1)*side_segment_length)
-            ff = cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2)
-            c = self.getDominantSegmentColor(ff)
+            c = self.getDominantSegmentColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
                 cv2.rectangle(frame, (ix+perimeter_depth, iy), (fx+(10+perimeter_depth), fy), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -253,7 +252,7 @@ class TVCollectionPoint(Thread):
             fx = int(self.fx-i*top_segment_length)
             iy = int(self.fy-perimeter_depth)
             fy = int(self.fy)
-            c = self.getDominantSegmentColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            c = self.getDominantSegmentColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
                 cv2.rectangle(frame, (ix, iy+perimeter_depth), (fx, fy+(10+perimeter_depth)), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -263,7 +262,7 @@ class TVCollectionPoint(Thread):
             fx = int(self.ix+perimeter_depth)
             iy = int(self.fy-(i+1)*side_segment_length)
             fy = int(self.fy-i*side_segment_length)
-            c = self.getDominantSegmentColor(cv2.resize(frame[ix:fx, iy:fy, :], (0,0), fx=0.2, fy=0.2))
+            c = self.getDominantSegmentColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
                 cv2.rectangle(frame, (ix-(10+perimeter_depth), iy), (fx-perimeter_depth, fy), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -275,7 +274,7 @@ class TVCollectionPoint(Thread):
         fx = int(fx)
         iy = int(iy)
         fy = int(fy)
-        average_color = [img[ix:fx, iy:fy, i].mean() for i in range(img.shape[-1])]
+        average_color = [img[iy:fy, ix:fx, i].mean() for i in range(img.shape[-1])]
         arr = np.float32(img)
         pixels = arr.reshape((-1, 3))
 
