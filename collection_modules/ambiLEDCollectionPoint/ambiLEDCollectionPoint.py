@@ -125,16 +125,24 @@ class TVCollectionPoint(Thread):
 
             # Dominant color
             if self._colorMode == 'dominant':
-                dominant_color = self.getDominantColor(cv2.resize(frame[:,:,:], (0,0), fx=0.4, fy=0.4), self.ix, self.fx, self.iy, self.fy)
-                #self.putCPMessage(dominant_color, 'light-dominant')
-                print(dominant_color)
-
+                data = self.getDominantColor(cv2.resize(frame[:,:,:], (0,0), fx=0.4, fy=0.4), self.ix, self.fx, self.iy, self.fy)
+                #self.putCPMessage(data, 'light-dominant')
+                #print('data: ',data)
+            
             elif self._colorMode == 'edgeMean':
                 data = self.getEdgeMeanColors(frame, top_length_pixels, side_length_pixels, perimeter_length_pixels, perimeter_depth)
+                print('data: ', data)
 
             elif self._colorMode == 'edgeDominant':
                 # this is the most promising
-                self.getEdgeDominantColors(frame, top_length_pixels, side_length_pixels, perimeter_length_pixels, perimeter_depth)
+                colorData = self.getEdgeDominantColors(frame, top_length_pixels, side_length_pixels, perimeter_length_pixels, perimeter_depth)
+                
+                # assuming LEDs are evenly distributed, find number for each edge of ROI
+                top_num_leds = self._numLEDs*(top_length_pixels/perimeter_length_pixels)
+                side_num_leds = self._numLEDs*(side_length_pixels/perimeter_length_pixels)
+                data = self.getColorString(colorData, top_num_leds, side_num_leds)
+                self.putCPMessage(data, 'light-edges')
+                # print('data: ', data)
 
             if self._showVideoStream:
                 cv2.rectangle(frame, (self.ix, self.iy), (self.fx, self.fy), (255,0,0), 1)
@@ -150,6 +158,17 @@ class TVCollectionPoint(Thread):
         self.n_colors = 5
         self.criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 200, .1)
         self.flags = cv2.KMEANS_RANDOM_CENTERS
+
+    def getColorString(self, colorData, top_num_leds, side_num_leds):
+        toReturn = ''
+        for key in colorData:
+            if key == 'top' or key == 'bottom':
+                for i in range(len(colorData[key])):
+                    toReturn += (colorData[key][i] + self._delimiter)*int(top_num_leds/self._topSegments)
+            if key == 'right' or key == 'left':
+                for i in range(len(colorData[key])):
+                    toReturn += (colorData[key][i] + self._delimiter)*int(side_num_leds/self._sideSegments)
+        return toReturn
 
     def getDominantSegmentColor(self, segment):
         average_color = [segment[:,:,i].mean() for i in range(segment.shape[-1])]
@@ -180,7 +199,7 @@ class TVCollectionPoint(Thread):
             iy = int(self.iy)
             fy = int(self.iy+perimeter_depth)
             c = self.getMeanColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
-            print('top segment %s, c: '%i, c)
+            data['top'][i] = self.getRGBHexString(c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
                 cv2.rectangle(frame, (ix, iy-(10+perimeter_depth)), (fx, fy-perimeter_depth), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -191,7 +210,7 @@ class TVCollectionPoint(Thread):
             iy = int(self.iy+i*side_segment_length)
             fy = int(self.iy+(i+1)*side_segment_length)
             c = self.getMeanColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
-            print('right segment %s, c: '%i, c)
+            data['right'][i] = self.getRGBHexString(c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
                 cv2.rectangle(frame, (ix+perimeter_depth, iy), (fx+(10+perimeter_depth), fy), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -202,7 +221,7 @@ class TVCollectionPoint(Thread):
             iy = int(self.fy-perimeter_depth)
             fy = int(self.fy)
             c = self.getMeanColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
-            print('bottom segment %s, c: '%i, c)
+            data['bottom'][i] = self.getRGBHexString(c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
                 cv2.rectangle(frame, (ix, iy+perimeter_depth), (fx, fy+(10+perimeter_depth)), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -213,26 +232,27 @@ class TVCollectionPoint(Thread):
             iy = int(self.fy-(i+1)*side_segment_length)
             fy = int(self.fy-i*side_segment_length)
             c = self.getMeanColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
-            print('left segment %s, c: '%i, c)
+            data['left'][i] = self.getRGBHexString(c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
                 cv2.rectangle(frame, (ix-(10+perimeter_depth), iy), (fx-perimeter_depth, fy), (int(c[0]), int(c[1]), int(c[2])), 10)
-
-        return 0
+        return data
 
     def getEdgeDominantColors(self, frame, top_length_pixels, side_length_pixels, perimeter_length_pixels, perimeter_depth):
-        # assuming LEDs are evenly distributed, find number for each edge of ROI
-        top_num_leds = self._numLEDs*(top_length_pixels/perimeter_length_pixels)
-        side_num_leds = self._numLEDs*(side_length_pixels/perimeter_length_pixels)
         top_segment_length = top_length_pixels/self._topSegments
         side_segment_length = side_length_pixels/self._sideSegments
-
+        data = {}
+        data['top'] = [None]*self._topSegments
+        data['right'] = [None]*self._sideSegments
+        data['bottom'] = [None]*self._topSegments
+        data['left'] = [None]*self._sideSegments
         for i in range(0, self._topSegments):
             ix = int(self.ix+i*top_segment_length)
             fx = int(self.ix+(i+1)*top_segment_length)
             iy = int(self.iy)
             fy = int(self.iy+perimeter_depth)
             c = self.getDominantSegmentColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
+            data['top'][i] = self.getRGBHexString(c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
                 cv2.rectangle(frame, (ix, iy-(10+perimeter_depth)), (fx, fy-perimeter_depth), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -243,6 +263,7 @@ class TVCollectionPoint(Thread):
             iy = int(self.iy+i*side_segment_length)
             fy = int(self.iy+(i+1)*side_segment_length)
             c = self.getDominantSegmentColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
+            data['right'][i] = self.getRGBHexString(c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
                 cv2.rectangle(frame, (ix+perimeter_depth, iy), (fx+(10+perimeter_depth), fy), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -253,6 +274,7 @@ class TVCollectionPoint(Thread):
             iy = int(self.fy-perimeter_depth)
             fy = int(self.fy)
             c = self.getDominantSegmentColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
+            data['bottom'][i] = self.getRGBHexString(c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,0,255), 1)
                 cv2.rectangle(frame, (ix, iy+perimeter_depth), (fx, fy+(10+perimeter_depth)), (int(c[0]), int(c[1]), int(c[2])), 10)
@@ -263,11 +285,15 @@ class TVCollectionPoint(Thread):
             iy = int(self.fy-(i+1)*side_segment_length)
             fy = int(self.fy-i*side_segment_length)
             c = self.getDominantSegmentColor(cv2.resize(frame[iy:fy, ix:fx, :], (0,0), fx=0.2, fy=0.2))
+            data['left'][i] = self.getRGBHexString(c)
             if self._showVideoStream:
                 cv2.rectangle(frame, (ix, iy), (fx, fy), (0,255,0), 1)
                 cv2.rectangle(frame, (ix-(10+perimeter_depth), iy), (fx-perimeter_depth, fy), (int(c[0]), int(c[1]), int(c[2])), 10)
 
-        return 0
+        return data
+
+    def getRGBHexString(self, bgr):
+        return "%x%x%x"%(bgr[2],bgr[1],bgr[0])
 
     def getDominantColor(self, img, ix, fx, iy, fy):
         ix = int(ix)
