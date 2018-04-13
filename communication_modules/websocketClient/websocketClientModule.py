@@ -49,7 +49,7 @@ class WebsocketClientModule(Thread):
         self.threadProcessQueue.start()
 
     def connect(self):
-        websocket.enableTrace(True)
+        #websocket.enableTrace(True)
         ws = websocket.WebSocketApp("ws://%s:%s"%(self._host, self._port),
         on_message = self.onMessage,
         on_error = self.onError,
@@ -82,7 +82,7 @@ class WebsocketClientModule(Thread):
         Join queue processing thread.
         """
 
-        self.logger.info("Shuting down websocket server %s" % (multiprocessing.current_process().name))
+        self.logger.info("Shutting down websocket server %s" % (multiprocessing.current_process().name))
 
         try:
             self.logger.info("Closing websocket")
